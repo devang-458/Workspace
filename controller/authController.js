@@ -94,7 +94,7 @@ class authController {
 
             };
 
-            const savedUser = await userRepo.create(userData);
+            const user = await userRepo.create(userData);
 
             organization.owner = user._id;
             organization.members.push(user._id);
@@ -117,7 +117,14 @@ class authController {
             return res.status(200).json({
                 success: true,
                 message: "User registered successfully, verification email sent",
-                response: userResponse,
+                token: token,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    organization: organization
+                },
                 errorCode: null
             });
         } catch (error) {
@@ -260,7 +267,9 @@ class authController {
             }
 
             const userRepo = appAuth.getRepository(CONSTANTS.USER_REPOSITORY);
-            const user = await userRepo.findOne({ email });
+            const user = await userRepo.findOne({ email })
+            .select('+password')
+            .populate('organization');
 
             if (!user || user.isDeleted) {
                 return resp.status(401).json({
@@ -287,7 +296,6 @@ class authController {
                 process.env.JWT_SECRET,
                 { expiresIn: '1h' }
             );
-
             const refreshToken = jwt.sign(
                 { uid: user._id },
                 process.env.JWT_REFRESH_SECRET,
